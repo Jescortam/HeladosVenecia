@@ -1,14 +1,17 @@
 package com.example.heladosvenecia
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.widget.Button
 import android.widget.TextView
+import android.widget.Toast
 
 class NumericButtonGroup
 constructor(numericButtons: Array<Button>,
-            resetButton: Button,
+            buttonBorrar: Button,
             val numericDisplay: TextView,
-            val updateActualDisplayCallback: () -> Unit) {
+            val updateActualDisplayCallback: () -> Unit,
+            private val context: Context) {
     init {
         for (i in 0..9) {
             numericButtons[i].setOnClickListener {
@@ -17,7 +20,7 @@ constructor(numericButtons: Array<Button>,
             }
         }
 
-        resetButton.setOnClickListener {
+        buttonBorrar.setOnClickListener {
             resetNumericDisplay()
             updateActualDisplayCallback()
         }
@@ -29,8 +32,10 @@ constructor(numericButtons: Array<Button>,
 
         if (displayText == "0") {
             numericDisplay.text = number.toString()
-        } else {
+        } else if (numericDisplay.text.toString().toInt() * 10 < 10000){
             numericDisplay.text = displayText + number.toString()
+        } else {
+            Toast.makeText(context, "No puede sobrepasar diez mil unidades", Toast.LENGTH_SHORT).show()
         }
     }
 

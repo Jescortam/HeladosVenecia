@@ -13,7 +13,7 @@ constructor(
         for (i in productButtonArray.indices) {
             productButtonArray[i].button.setOnClickListener {
                 selectButton(productButtonArray[i])
-                updateActualDisplayCallback
+                updateActualDisplayCallback()
             }
         }
     }

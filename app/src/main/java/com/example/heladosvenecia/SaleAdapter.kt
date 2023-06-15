@@ -8,7 +8,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.heladosvenecia.R
 
 class SaleAdapter: RecyclerView.Adapter<SaleAdapter.ViewHolder>() {
-    public lateinit var labels: Array<String>;
+    lateinit var labels: ArrayList<String>
 
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         var button: Button = view.findViewById(R.id.saleButton)

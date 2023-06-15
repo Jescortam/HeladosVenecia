@@ -29,4 +29,11 @@
     <string name="pesos">Pesos</string>
     <string name="x">X</string>
     <string name="actual">Actual</string>
+    <string name="borrar">Borrar</string>
+    <string name="piezas">Piezas</string>
+    <string name="combos">Combos</string>
+    <string name="carrito">Carrito ($)</string>
+    <string name="mixto_ch">Mixto ch</string>
+    <string name="mixto_md">Mixto md</string>
+    <string name="transferencia">Transferencia</string>
 </resources>

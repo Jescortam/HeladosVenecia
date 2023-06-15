@@ -1,73 +1,77 @@
 package com.example.heladosvenecia
 
+import android.content.ContentValues.TAG
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.widget.Button
-import android.widget.TextView
+import android.util.Log
 import android.widget.Toast
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
+import com.example.heladosvenecia.databinding.ActivityMainBinding
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import layout.SaleAdapter
+import java.io.IOException
 
 class MainActivity : AppCompatActivity() {
-    lateinit var recyclerView: RecyclerView
+    private lateinit var binding: ActivityMainBinding
+
     private val adapter = SaleAdapter()
     private lateinit var numericButtonGroup: NumericButtonGroup
     lateinit var categoryButtonGroup: CategoryButtonGroup
     lateinit var productButtonGroup: ProductButtonGroup
-    private lateinit var actualDisplay: TextView
-    lateinit var totalDisplay: TextView
-    lateinit var buttonAgregar: Button
-    lateinit var buttonTerminar: Button
-    lateinit var sales: Array<String>
+    private var sales: ArrayList<String> = arrayListOf()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        actualDisplay = findViewById(R.id.actualDisplay)
-        totalDisplay = findViewById(R.id.totalDisplay)
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        val view = binding.root
+        setContentView(view)
 
         initNumericButtonGroup(::updateActualDisplayCallback)
-
         initCategoryButtonGroup(::updateActualDisplayCallback)
-
         initProductButtonGroup(::updateActualDisplayCallback)
 
-        initAddSale()
+        binding.buttonAgregar.setOnClickListener { onButtonAgregarClick() }
 
         initFinish()
 
         initRecyclerView()
     }
 
-    private fun initNumericButtonGroup(onButtonClick: () -> Unit) {
+    private fun initNumericButtonGroup(updateActualDisplayCallback: () -> Unit) {
         val numericButtonArray = arrayOf(
-            findViewById<Button>(R.id.button0),
-            findViewById(R.id.button1),
-            findViewById(R.id.button2),
-            findViewById(R.id.button3),
-            findViewById(R.id.button4),
-            findViewById(R.id.button5),
-            findViewById(R.id.button6),
-            findViewById(R.id.button7),
-            findViewById(R.id.button8),
-            findViewById(R.id.button9),
+            binding.button0,
+            binding.button1,
+            binding.button2,
+            binding.button3,
+            binding.button4,
+            binding.button5,
+            binding.button6,
+            binding.button7,
+            binding.button8,
+            binding.button9,
         )
 
         numericButtonGroup = NumericButtonGroup(
             numericButtonArray,
-            findViewById(R.id.resetButton),
-            findViewById(R.id.numericDisplay),
-            onButtonClick
+            binding.buttonBorrar,
+            binding.numericDisplay,
+            updateActualDisplayCallback,
+            this
         )
     }
 
     private fun initCategoryButtonGroup(updateActualDisplayCallback: () -> Unit) {
         val categoryButtonArray = arrayOf(
-            OptionButton("UNIDADES", findViewById(R.id.buttonUnidades)),
-            OptionButton("PAQUETES", findViewById(R.id.buttonPaquetes)),
-            OptionButton("DINERO", findViewById(R.id.buttonDinero))
+            OptionButton(SaleCategory.PIEZAS, binding.buttonPiezas),
+            OptionButton(SaleCategory.COMBOS, binding.buttonCombos),
+            OptionButton(SaleCategory.CARRITO, binding.buttonCarrito)
         )
 
         categoryButtonGroup = CategoryButtonGroup(
@@ -78,17 +82,16 @@ class MainActivity : AppCompatActivity() {
 
     private fun initProductButtonGroup(updateActualDisplayCallback: () -> Unit) {
         val productButtonArray = arrayOf(
-            ProductButton("BOLIS", "CHEAP", findViewById(R.id.buttonBolis)),
-            ProductButton("PALETA", "CHEAP", findViewById(R.id.buttonPaleta)),
-            ProductButton("MIXTO PEQUEÑO", "CHEAP", findViewById(R.id.buttonMixtoPequeño)),
-            ProductButton("ROMPOPE", "REGULAR", findViewById(R.id.buttonRompope)),
-            ProductButton("NIEVE", "REGULAR", findViewById(R.id.buttonNieve)),
-            ProductButton("ESQUIMAL", "REGULAR", findViewById(R.id.buttonEsquimal)),
-            ProductButton("SANDWICH", "REGULAR", findViewById(R.id.buttonSandwich)),
-            ProductButton("MIXTO MEDIANO", "REGULAR", findViewById(R.id.buttonMixtoMediano)),
-            ProductButton("JUMBO", "EXPENSIVE", findViewById(R.id.buttonJumbo)),
-            ProductButton("LECHE", "EXPENSIVE", findViewById(R.id.buttonLeche)),
-            ProductButton("MIXTO GRANDE", "EXPENSIVE", findViewById(R.id.buttonMixtoGrande)),
+            ProductButton(ProductLabel.BOLIS, ProductType.SMALL, binding.buttonBolis),
+            ProductButton(ProductLabel.PALETA, ProductType.SMALL, binding.buttonPaleta),
+            ProductButton(ProductLabel.MIXTO_CHICO, ProductType.SMALL, binding.buttonMixtoChico),
+            ProductButton(ProductLabel.ROMPOPE, ProductType.MEDIUM, binding.buttonRompope),
+            ProductButton(ProductLabel.NIEVE, ProductType.MEDIUM, binding.buttonNieve),
+            ProductButton(ProductLabel.ESQUIMAL, ProductType.MEDIUM, binding.buttonEsquimal),
+            ProductButton(ProductLabel.SANDWICH, ProductType.MEDIUM, binding.buttonSandwich),
+            ProductButton(ProductLabel.MIXTO_MEDIANO, ProductType.MEDIUM, binding.buttonMixtoMediano),
+            ProductButton(ProductLabel.JUMBO, ProductType.LARGE, binding.buttonJumbo),
+            ProductButton(ProductLabel.LECHE, ProductType.LARGE, binding.buttonLeche),
         )
 
         productButtonGroup = ProductButtonGroup(
@@ -98,30 +101,32 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateActualDisplayCallback() {
-        if (categoryButtonGroup.activeCategory != null &&
-            productButtonGroup.activeProduct != null) {
+        if (categoryButtonGroup.activeCategory !== null &&
+            productButtonGroup.activeProduct !== null) {
             val numericValue: Int = (numericButtonGroup.numericDisplay.text as String).toInt()
-            val category = categoryButtonGroup.activeCategory.label
+            val category = categoryButtonGroup.activeCategory.value
             val product = productButtonGroup.activeProduct
+
+            Log.d(TAG, "Numeric Value: $numericValue")
+            Log.d(TAG, "Category: $category")
+            Log.d(TAG, "Product: ${product.label}")
 
             var actualPrice = 0
             var unitPrice = 0
 
-            if (category == "DINERO") {
+            if (category == SaleCategory.CARRITO) {
                 actualPrice = numericValue
             } else {
                 unitPrice = when (category) {
-                    "UNIDADES" -> when (product.type) {
-                        "CHEAP" -> 8
-                        "REGULAR" -> 17
-                        "EXPENSIVE" -> 22
-                        else -> 0
+                    SaleCategory.PIEZAS -> when (product.type) {
+                        ProductType.SMALL -> 8
+                        ProductType.MEDIUM -> 17
+                        ProductType.LARGE -> 22
                     }
-                    "PAQUETES" -> when (product.type) {
-                        "CHEAP" -> 65
-                        "REGULAR" -> 65
-                        "EXPENSIVE" -> 85
-                        else -> 0
+                    SaleCategory.COMBOS -> when (product.type) {
+                        ProductType.SMALL -> 65
+                        ProductType.MEDIUM -> 65
+                        ProductType.LARGE -> 85
                     }
                     else -> 0
                 }
@@ -129,83 +134,129 @@ class MainActivity : AppCompatActivity() {
                 actualPrice = unitPrice * numericValue
             }
 
-            actualDisplay.text = actualPrice.toString()
+            binding.actualDisplay.text = actualPrice.toString()
         }
     }
 
-    private fun initAddSale() {
-        buttonAgregar = findViewById(R.id.buttonAgregar)
-        sales = arrayOf()
+    private fun onButtonAgregarClick() {
+        if (numericButtonGroup.numericDisplay.text !== "0") {
+            addSale()
+            addSaleView()
 
-        buttonAgregar.setOnClickListener {
-            if (numericButtonGroup.numericDisplay.text != "0") {
-                updateTotalDisplay()
-                addSaleView()
-                numericButtonGroup.numericDisplay.text = "0"
-                updateActualDisplayCallback()
-            }
-        }
-    }
-
-    private fun updateTotalDisplay() {
-        var total = (totalDisplay.text as String).toInt()
-        total += (actualDisplay.text as String).toInt()
-        totalDisplay.text = total.toString()
-    }
-
-    private fun addSaleView() {
-        var sale: String = ""
-        val numericValueString = numericButtonGroup.numericDisplay.text as String
-        val category = categoryButtonGroup.activeCategory.label
-        val product = productButtonGroup.activeProduct.label
-
-        if (category == "DINERO") {
-            sale += "\n$"
-        }
-
-        sale += numericValueString
-        sale += "\n"
-
-        if (category == "PAQUETES") {
-            sale += "PAQUETES"
-        } else {
-            sale += "UNIDADES"
-        }
-
-        if (category != "DINERO") {
-            sale += "\n"
-            sale += product
-        }
-
-        sales += sale
-        adapter.labels = sales
-        adapter.notifyItemInserted(adapter.labels.size - 1)
-    }
-
-    private fun initFinish() {
-        buttonTerminar = findViewById(R.id.buttonTerminar)
-
-        buttonTerminar.setOnClickListener {
             updateTotalDisplay()
             numericButtonGroup.numericDisplay.text = "0"
             updateActualDisplayCallback()
-            Toast.makeText(this, totalDisplay.text as String, Toast.LENGTH_SHORT).show()
-            totalDisplay.text = "0"
+        }
+    }
+
+    private fun addSale() {
+        lifecycleScope.launch {
+            val quantity = (numericButtonGroup.numericDisplay.text as String).toInt()
+            val category = categoryButtonGroup.activeCategory.value
+            val product = productButtonGroup.activeProduct
+
+            val sale = Sale(quantity, category, product.label, product.type)
+
+            val saleList = loadSalesFromStorage()
+
+            Log.d(TAG, saleList.toString())
+
+            saleList.add(sale)
+            val saleListJson = Gson().toJson(saleList)
+
+            saveSalesToStorage(saleListJson)
+        }
+    }
+
+    private suspend fun loadSalesFromStorage(): ArrayList<Sale> {
+        var saleListList: List<ArrayList<Sale>>?
+        withContext(Dispatchers.IO) {
+            val files = filesDir.listFiles()
+            saleListList = (files?.filter { it.isFile && it.startsWith("helados-venecia-sales.json") }?.map { file ->
+                val jsonString = file.bufferedReader().use { it.readText() }
+
+                val saleListType = object : TypeToken<ArrayList<Sale>>() {}.type
+                Gson().fromJson(jsonString, saleListType)
+            })
+        }
+
+        if (saleListList != null) {
+            if (saleListList!!.isNotEmpty()) {
+                return saleListList!![0]
+            }
+        }
+
+        return arrayListOf()
+    }
+
+        private fun saveSalesToStorage(saleListJson: String): Boolean {
+            return try {
+                openFileOutput("helados-venecia-sales.json", MODE_PRIVATE).use { stream ->
+                    stream.write(saleListJson.encodeToByteArray())
+                }
+                true
+            } catch(e: IOException) {
+                e.printStackTrace()
+                false
+            }
+        }
+
+    private fun updateTotalDisplay() {
+        var total = (binding.totalDisplay.text as String).toInt()
+        total += (binding.actualDisplay.text as String).toInt()
+        binding.totalDisplay.text = total.toString()
+    }
+
+    private fun addSaleView() {
+        Toast.makeText(this, "Coming soon", Toast.LENGTH_SHORT).show()
+//        var sale = ""
+//        val numericValueString = numericButtonGroup.numericDisplay.text as String
+//        val category = categoryButtonGroup.activeCategory.value
+//        val product = productButtonGroup.activeProduct.label
+//
+//        if (category === SaleCategory.CARRITO) {
+//            sale += "\n$"
+//        }
+//
+//        sale += numericValueString
+//        sale += "\n"
+//
+//        if (category === SaleCategory.COMBOS) {
+//            sale += "PAQUETES"
+//        } else {
+//            sale += "UNIDADES"
+//        }
+//
+//        if (category !== SaleCategory.CARRITO) {
+//            sale += "\n"
+//            sale += product
+//        }
+//
+//        sales += sale
+//        adapter.labels = sales
+//        adapter.notifyItemInserted(adapter.labels.size - 1)
+    }
+
+    private fun initFinish() {
+        binding.buttonTerminar.setOnClickListener {
+            updateTotalDisplay()
+            numericButtonGroup.numericDisplay.text = "0"
+            updateActualDisplayCallback()
+            Toast.makeText(this, binding.totalDisplay.text as String, Toast.LENGTH_SHORT).show()
+            binding.totalDisplay.text = "0"
 
             val size = sales.size
-            sales = arrayOf()
+            sales = arrayListOf()
             adapter.labels = sales
             adapter.notifyItemRangeRemoved(0, size)
         }
     }
 
     private fun initRecyclerView() {
-        recyclerView = findViewById(R.id.saleList)
-
         adapter.labels = sales
         adapter.notifyItemRangeInserted(0, adapter.labels.size)
 
-        recyclerView.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
-        recyclerView.adapter = adapter
+        binding.saleList.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+        binding.saleList.adapter = adapter
     }
 }

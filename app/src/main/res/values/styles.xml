@@ -13,12 +13,14 @@
     </style>
 
     <style name="numericDisplay">
-        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_width">150dp</item>
         <item name="android:layout_height">80dp</item>
-        <item name="android:layout_marginBottom">20dp</item>
         <item name="android:background">@color/customLightGray</item>
-        <item name="android:gravity">end</item>
+        <item name="android:layout_marginTop">10dp</item>
         <item name="android:paddingTop">25dp</item>
+        <item name="android:gravity">end</item>
+        <item name="android:layout_marginStart">5dp</item>
+        <item name="android:layout_marginEnd">5dp</item>
         <item name="android:paddingStart">5dp</item>
         <item name="android:paddingEnd">5dp</item>
         <item name="android:text">@string/_0</item>
@@ -66,7 +68,6 @@
 
     <style name="actionButton" parent="customButton">
         <item name="android:textSize">20sp</item>
-        <item name="android:layout_width">150dp</item>
         <item name="android:backgroundTint">@color/gray</item>
         <item name="android:textColor">@color/black</item>
     </style>
